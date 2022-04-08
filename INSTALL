@@ -45,17 +45,18 @@ of `autoconf'.
 The simplest way to compile this package is:
 
   1. `cd' to the directory containing the package's source code and type
-     `./configure' to configure the package for your system.
+     `./configure --with-protobuf=/usr/local' to configure the package for your system.
 
      Running `configure' might take a while.  While running, it prints
      some messages telling which features it is checking for.
 
-  2. Type `make' to compile the package.
+  2. Type `make -j$(nproc)' to compile the package. $(nproc) ensures
+     it uses all cores for compilation
 
   3. Optionally, type `make check' to run any self-tests that come with
      the package.
 
-  4. Type `make install' to install the programs and any data files and
+  4. Type `sudo make install' to install the programs and any data files and
      documentation.
 
   5. You can remove the program binaries and object files from the
@@ -288,4 +289,3 @@ operates.
 
 `configure' also accepts some other, not widely useful, options.  Run
 `configure --help' for more details.
-

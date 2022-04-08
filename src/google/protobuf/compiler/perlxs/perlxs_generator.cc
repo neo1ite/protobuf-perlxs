@@ -9,6 +9,9 @@
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/io/zero_copy_stream.h>
+#include <boost/scoped_ptr.hpp>
+using namespace std;
+using namespace boost;
 
 namespace google {
 namespace protobuf {
@@ -912,7 +915,7 @@ PerlXSGenerator::GenerateMessageXSTypedefs(const Descriptor* descriptor,
   }
 
   if ( seen.find(descriptor) == seen.end() ) {
-    string cn = cpp::ClassName(descriptor, true);
+    string cn = cpp::QualifiedClassName(descriptor);
     string un = StringReplace(cn, "::", "__", true);
 
     seen.insert(descriptor);
@@ -933,7 +936,7 @@ PerlXSGenerator::GenerateMessageStatics(const Descriptor* descriptor,
 
   map<string, string> vars;
 
-  string cn = cpp::ClassName(descriptor, true);
+  string cn = cpp::QualifiedClassName(descriptor);
   string un = StringReplace(cn, "::", "__", true);
 
   vars["depth"]       = "0";
@@ -982,7 +985,7 @@ PerlXSGenerator::GenerateMessageXSFieldAccessors(const FieldDescriptor* field,
   FieldDescriptor::Type    type      = field->type();
 
   if ( fieldtype == FieldDescriptor::CPPTYPE_MESSAGE ) {
-    vars["fieldtype"]  = cpp::ClassName(field->message_type(), true);
+    vars["fieldtype"]  = cpp::QualifiedClassName(field->message_type());
     vars["fieldclass"] = MessageClassName(field->message_type());
   }
 
@@ -1154,7 +1157,7 @@ PerlXSGenerator::GenerateMessageXSFieldAccessors(const FieldDescriptor* field,
 
   switch ( fieldtype ) {
   case FieldDescriptor::CPPTYPE_ENUM:
-    vars["etype"] = cpp::ClassName(field->enum_type(), true);
+    vars["etype"] = cpp::QualifiedClassName(field->enum_type());
     // Fall through
   case FieldDescriptor::CPPTYPE_INT32:
   case FieldDescriptor::CPPTYPE_BOOL:
@@ -1295,7 +1298,7 @@ PerlXSGenerator::GenerateMessageXSCommonMethods(const Descriptor* descriptor,
 #if (GOOGLE_PROTOBUF_VERSION >= 2002000)
   FileOptions::OptimizeMode mode;
 #endif // GOOGLE_PROTOBUF_VERSION
-  string cn = cpp::ClassName(descriptor, true);
+  string cn = cpp::QualifiedClassName(descriptor);
   string un = StringReplace(cn, "::", "__", true);
 
 #if (GOOGLE_PROTOBUF_VERSION >= 2002000)
@@ -1658,7 +1661,7 @@ PerlXSGenerator::GenerateMessageXSPackage(const FileDescriptor* file,
 
   map<string, string> vars;
 
-  string cn = cpp::ClassName(descriptor, true);
+  string cn = cpp::QualifiedClassName(descriptor);
   string mn = MessageModuleName(descriptor);
   string pn = MessageClassName(descriptor);
   string un = StringReplace(cn, "::", "__", true);
@@ -1785,7 +1788,7 @@ PerlXSGenerator::GenerateTypemapInput(const Descriptor* descriptor,
 {
   map<string, string> vars;
 
-  string cn = cpp::ClassName(descriptor, true);
+  string cn = cpp::QualifiedClassName(descriptor);
 
   vars["classname"]   = cn;
   vars["perlclass"]   = MessageClassName(descriptor);
@@ -2083,7 +2086,7 @@ PerlXSGenerator::MessageToHashref(const Descriptor * descriptor,
     StartFieldToHashref(field, printer, vars, depth);
 
     if ( fieldtype == FieldDescriptor::CPPTYPE_MESSAGE ) {
-      vars["fieldtype"] = cpp::ClassName(field->message_type(), true);
+      vars["fieldtype"] = cpp::QualifiedClassName(field->message_type());
       printer.Print(vars,
 		    "$fieldtype$ * msg$ndepth$ = msg$pdepth$->"
 		    "mutable_$cppname$($i$);\n"
@@ -2121,7 +2124,7 @@ PerlXSGenerator::FieldFromHashrefHelper(io::Printer& printer,
 		  "$msg$->$do$_$cppname$(SvIV($var$));\n");
     break;
   case FieldDescriptor::CPPTYPE_ENUM:
-    vars["etype"] = cpp::ClassName(field->enum_type(), true);
+    vars["etype"] = cpp::QualifiedClassName(field->enum_type());
     printer.Print(vars,
 		  "$msg$->$do$_$cppname$"
 		  "(($etype$)SvIV($var$));\n");
@@ -2207,7 +2210,7 @@ PerlXSGenerator::MessageFromHashref(const Descriptor * descriptor,
     vars["cppname"] = cpp::FieldName(field);
 
     if ( field->cpp_type() == FieldDescriptor::CPPTYPE_MESSAGE ) {
-      vars["fieldtype"] = cpp::ClassName(field->message_type(), true);
+      vars["fieldtype"] = cpp::QualifiedClassName(field->message_type());
     }
 
     printer.Print(vars,

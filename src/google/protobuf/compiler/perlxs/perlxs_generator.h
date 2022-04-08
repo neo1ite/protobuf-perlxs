@@ -9,6 +9,7 @@
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/compiler/code_generator.h>
 #include <google/protobuf/stubs/common.h>
+using namespace std;
 
 namespace google {
 namespace protobuf {
@@ -28,9 +29,10 @@ namespace compiler {
 // function prototypes here.
 
 namespace cpp {
-  extern string ClassName(const Descriptor* descriptor, bool qualified);
-  extern string ClassName(const EnumDescriptor* enum_descriptor,
-			  bool qualified);
+  extern std::string ClassName(const Descriptor* descriptor);
+  extern std::string ClassName(const EnumDescriptor* enum_descriptor);
+  extern std::string QualifiedClassName(const Descriptor* d);
+  extern std::string QualifiedClassName(const EnumDescriptor* d);
   extern string FieldName(const FieldDescriptor* field);
   extern string StripProto(const string& filename);
 }
@@ -64,7 +66,7 @@ class LIBPROTOC_EXPORT PerlXSGenerator : public CodeGenerator {
   string PerlPackageFile(const string& name) const;
   string PerlPackageModule(const string& name) const;
   string StripLast(const string& name,const char seperator) const;
-  
+
   void GenerateMakefilePL(const FileDescriptor* file,
 													OutputDirectory* outdir) const;
 

@@ -3,6 +3,7 @@
 #include <google/protobuf/compiler/perlxs/perlxs_helpers.h>
 #include <google/protobuf/io/printer.h>
 #include <google/protobuf/descriptor.pb.h>
+using namespace std;
 
 namespace google {
 namespace protobuf {
