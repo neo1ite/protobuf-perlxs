@@ -324,7 +324,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 			mvars["marshall"] =
 						"    my $marshall = sub {\n"
 						"        my $data = shift;\n"
-						"        my $encoded = $data && $data->can(\"pack\"))? $data->pack() : $data;\n"
+						"        my $encoded = ($data && $data->can(\"pack\")) ? $data->pack() : $data;\n"
 						"        return $encoded;\n"
 						"    };\n";
 
