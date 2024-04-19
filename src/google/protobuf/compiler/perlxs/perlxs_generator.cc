@@ -561,7 +561,7 @@ PerlXSGenerator::GenerateMessagePOD(const Descriptor* descriptor,
 
   // Top-level messages in dependency files (recursively expanded)
 
-  printer.Print("http://code.google.com/p/protobuf\n"
+  printer.Print("https://github.com/neo1ite/protobuf-perlxs or http://code.google.com/p/protobuf\n"
 		"\n"
 		"=cut\n"
 		"\n");
@@ -883,7 +883,7 @@ PerlXSGenerator::GenerateEnumModule(const EnumDescriptor* enum_descriptor,
 		"\n"
 		"=head1 SEE ALSO\n"
 		"\n"
-		"http://code.google.com/p/protobuf\n"
+		"https://github.com/neo1ite/protobuf-perlxs or http://code.google.com/p/protobuf\n"
 		"\n"
 		"=cut\n"
 		"\n");
@@ -1580,7 +1580,7 @@ PerlXSGenerator::GenerateMessageXSCommonMethods(const Descriptor* descriptor,
   GenerateTypemapInput(descriptor, printer, "THIS");
   printer.Print(vars,
 		"    if ( THIS != NULL ) {\n"
-		"      RETVAL = THIS->ByteSize();\n"
+		"      RETVAL = THIS->ByteSizeLong();\n"
 		"    } else {\n"
 		"      RETVAL = 0;\n"
 		"    }\n"
