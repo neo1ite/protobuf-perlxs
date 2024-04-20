@@ -123,8 +123,6 @@ void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file, OutputDirec
     scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
     io::Printer printer(output.get(), '&');
 
-	string package_file = StringReplace(PerlPackageModule(file->package()), "::", "/", true);
-
 	map<string, string> vars;
 	vars["perlxs_package"]        = perlxs_package_;
 	vars["perlxs_file"]           = PerlPackageFile(perlxs_package_);
@@ -134,7 +132,7 @@ void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file, OutputDirec
 	vars["perlxs_package_name"]   = PerlPackageName(perlxs_package_);
 	vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
 	vars["package_module"]        = PerlPackageModule(file->package());
-	vars["package_file"]          = package_file;
+	vars["package_file"]          = PerlPackageFile(PerlPackageModule(file->package()));
 
 	vars["compile"]               =
 			"package MY;\n"
@@ -302,7 +300,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file, OutputDi
 	{
 		const ServiceDescriptor *service = file->service(i);
 
-		string package_file = StringReplace(PerlPackageModule(file->package()), "::", "/", true);
+		string package_file = PerlPackageFile(PerlPackageModule(file->package()));
 		string filename = "lib/" + PerlPackageFile(perlxs_package_) +
 												"/" + package_file + "/" +
 												"/Service/" + PerlPackageFile(service->name()) + ".pm";
