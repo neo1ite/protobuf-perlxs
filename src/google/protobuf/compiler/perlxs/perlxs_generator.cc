@@ -122,7 +122,7 @@ void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file,
 {
     string filename = "Makefile.PL";
     scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
-    io::Printer printer(output.get(), '*');
+    io::Printer printer(output.get(), '&');
 
 		map<string, string> vars;
 		vars["perlxs_package"] = perlxs_package_;
@@ -139,18 +139,25 @@ void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file,
 		printer.Print(vars,
 			"use ExtUtils::MakeMaker;\n"
 			"WriteMakefile(\n"
-			"              'NAME'          => '*perlxs_package_name*::*package_module*',\n"
-			"              'VERSION_FROM'  => 'lib/*perlxs_file*/*package_file*.pm',\n"
+			"              'NAME'          => '&perlxs_package_name&::&package_module&',\n"
+			"              'VERSION_FROM'  => 'lib/&perlxs_file&/&package_file&.pm',\n"
 			"              'OPTIMIZE'      => '-O2 -Wall',\n"
 			"              'CC'            => 'g++',\n"
 			"              'LD'            => '$(CC)',\n"
-			"              'C'             => [ '*perlxs_package_name*.c','*proto*.pb.cc' ],\n"
+			"              'C'             => [ '&perlxs_package_name&.c','&proto&.pb.cc' ],\n"
 			"              'CCFLAGS'       => '-fno-strict-aliasing',\n"
 			"              'OBJECT'        => '$(O_FILES)',\n"
 			"              'INC'           => '-I.',\n"
 			"              'LIBS'          => ['-L/usr/local/lib -lprotobuf'],\n"
 			"              'XSOPT'         => '-C++',\n"
 			"             );\n"
+			"\n"
+			"package MY;\n"
+			"sub c_o {\n"
+			"    my $inherited = shift->SUPER::c_o(@_);\n"
+			"    $inherited =~ s!\\$\\(CCCMD\\) \\$\\(CCCDLFLAGS\\) \"-I\\$\\(PERL_INC\\)\" \\$\\(PASTHRU_DEFINE\\) \\$\\(DEFINE\\) \\$\\*\\.cc!\\$(CCCMD) \\$(CCCDLFLAGS) -o \\$*.o \"-I\\$(PERL_INC)\" \\$(PASTHRU_DEFINE) \\$(DEFINE) \\$*.cc!;\n"
+			"    $inherited;\n"
+			"}\n"
 			"\n"
 		);
 
@@ -166,14 +173,18 @@ PerlXSGenerator::GenerateXS(const FileDescriptor* file,
 	io::Printer printer(output.get(), '$');
 
 	map<string, string> vars;
-	vars["perlxs_package"] = perlxs_package_;
-	vars["perlxs_file"]    = PerlPackageFile(perlxs_package_);
-	vars["proto"]          = cpp::StripProto(file->name());
+	string fn = cpp::StripProto(file->name());
+	string cn = StringReplace(fn, "/", "_", true);
+
+	vars["classname"]             = cn;
+	vars["perlxs_package"]        = perlxs_package_;
+	vars["perlxs_file"]           = PerlPackageFile(perlxs_package_);
+	vars["proto"]                 = cpp::StripProto(file->name());
 	vars["proto_package_module"]  = PerlPackageModule(file->name());
 	vars["perlxs_package_name"]   = PerlPackageName(perlxs_package_);
 	vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
-	vars["package_module"] = PerlPackageModule(file->package());
-	vars["package_file"]   = PerlPackageFile(file->package());
+	vars["package_module"]        = PerlPackageModule(file->package());
+	vars["package_file"]          = PerlPackageFile(file->package());
 
   // Boilerplate at the top of the file.
 
@@ -200,7 +211,7 @@ PerlXSGenerator::GenerateXS(const FileDescriptor* file,
 		"#include <sstream>\n"
 		"#include <google/protobuf/stubs/common.h>\n"
 		"#include <google/protobuf/io/zero_copy_stream.h>\n"
-		"#include \"$proto$.pb.h\"\n"
+		"#include <$proto$.pb.h>\n"
 		"\n"
 		"using namespace std;\n"
 		"\n"
@@ -209,12 +220,12 @@ PerlXSGenerator::GenerateXS(const FileDescriptor* file,
   // ZeroCopyOutputStream implementation (for improved pack() performance)
 
   printer.Print(vars,
-		"class $proto$_OutputStream :\n"
+		"class $classname$_OutputStream :\n"
 		"  public google::protobuf::io::ZeroCopyOutputStream {\n"
 		"public:\n"
-		"  explicit $proto$_OutputStream(SV * sv) :\n"
+		"  explicit $classname$_OutputStream(SV * sv) :\n"
 		"  sv_(sv), len_(0) {}\n"
-		"  ~$proto$_OutputStream() {}\n"
+		"  ~$classname$_OutputStream() {}\n"
 		"\n"
 		"  bool Next(void** data, int* size)\n"
 		"  {\n"
@@ -249,7 +260,7 @@ PerlXSGenerator::GenerateXS(const FileDescriptor* file,
 		"  SV * sv_;\n"
 		"  STRLEN len_;\n"
 		"\n"
-		"  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS($proto$_OutputStream);\n"
+		"  GOOGLE_DISALLOW_EVIL_CONSTRUCTORS($classname$_OutputStream);\n"
 		"};\n"
 		"\n"
 		"\n"
@@ -332,8 +343,8 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 						"    my $unmarshall = sub {\n"
 						"        my $data = shift;\n"
 						"        my $d = new " + PerlPackageModule(perlxs_package_) + "::" +
-														PerlPackageModule(file->package()) + "::" +
-														PerlPackageModule(method->output_type()->name())+"();\n"
+												 PerlPackageModule(file->package()) + "::" +
+												 PerlPackageModule(method->output_type()->name())+"();\n"
 						"        if ($d->unpack($data)) { return $d; }\n"
 						"        warn \"failed unpacking protobuf data\";\n"
 						"        return undef;\n"
@@ -357,7 +368,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 						"                       serialize   => $marshall,\n"
 						"                       deserialize => $unmarshall,\n"
 						"                       metadata    => $metadata,\n"
-					  "                       options     => $options);\n"
+						"                       options     => $options);\n"
 						"}\n"
 						"\n"
 					);
@@ -378,7 +389,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 						"                       serialize   => $marshall,\n"
 						"                       deserialize => $unmarshall,\n"
 						"                       metadata    => $metadata,\n"
-					  "                       options     => $options);\n"
+						"                       options     => $options);\n"
 						"}\n"
 						"\n"
 					);
@@ -403,7 +414,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 						"                       deserialize => $unmarshall,\n"
 						"                       argument    => $argument,\n"
 						"                       metadata    => $metadata,\n"
-					  "                       options     => $options);\n"
+						"                       options     => $options);\n"
 						"}\n"
 						"\n"
 					);
@@ -426,7 +437,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 						"                       deserialize => $unmarshall,\n"
 						"                       argument    => $argument,\n"
 						"                       metadata    => $metadata,\n"
-					  "                       options     => $options);\n"
+						"                       options     => $options);\n"
 						"}\n"
 						"\n"
 					);
