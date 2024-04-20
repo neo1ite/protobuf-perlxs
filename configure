@@ -580,8 +580,8 @@ MAKEFLAGS=
 # Identity of this package.
 PACKAGE_NAME='protobuf-perlxs'
 PACKAGE_TARNAME='protobuf-perlxs'
-PACKAGE_VERSION='1.1'
-PACKAGE_STRING='protobuf-perlxs 1.1'
+PACKAGE_VERSION='1.2'
+PACKAGE_STRING='protobuf-perlxs 1.2'
 PACKAGE_BUGREPORT='dave@daveb.net'
 PACKAGE_URL=''
 
@@ -5595,5 +5595,3 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
-

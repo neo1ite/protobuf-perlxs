@@ -117,50 +117,54 @@ PerlXSGenerator::ProcessOption(const string& option)
 }
 
 // Generate services
-void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file,
-																				 OutputDirectory* outdir) const
+void PerlXSGenerator::GenerateMakefilePL(const FileDescriptor* file, OutputDirectory* outdir) const
 {
     string filename = "Makefile.PL";
     scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
     io::Printer printer(output.get(), '&');
 
-		map<string, string> vars;
-		vars["perlxs_package"] = perlxs_package_;
-		vars["perlxs_file"]    = PerlPackageFile(perlxs_package_);
-		vars["proto"]          = cpp::StripProto(file->name());
-		vars["proto_package_module"]  = PerlPackageModule(file->name());
-		vars["proto_package_file"]    = PerlPackageFile(file->name());
-		vars["perlxs_package_name"]   = PerlPackageName(perlxs_package_);
-		vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
-		vars["package_module"] = PerlPackageModule(file->package());
-		vars["package_file"]   = PerlPackageFile(file->package());
+	string package_file = StringReplace(PerlPackageModule(file->package()), "::", "/", true);
 
+	map<string, string> vars;
+	vars["perlxs_package"]        = perlxs_package_;
+	vars["perlxs_file"]           = PerlPackageFile(perlxs_package_);
+	vars["proto"]                 = cpp::StripProto(file->name());
+	vars["proto_package_module"]  = PerlPackageModule(file->name());
+	vars["proto_package_file"]    = PerlPackageFile(file->name());
+	vars["perlxs_package_name"]   = PerlPackageName(perlxs_package_);
+	vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
+	vars["package_module"]        = PerlPackageModule(file->package());
+	vars["package_file"]          = package_file;
 
-		printer.Print(vars,
-			"use ExtUtils::MakeMaker;\n"
-			"WriteMakefile(\n"
-			"              'NAME'          => '&perlxs_package_name&::&package_module&',\n"
-			"              'VERSION_FROM'  => 'lib/&perlxs_file&/&package_file&.pm',\n"
-			"              'OPTIMIZE'      => '-O2 -Wall',\n"
-			"              'CC'            => 'g++',\n"
-			"              'LD'            => '$(CC)',\n"
-			"              'C'             => [ '&perlxs_package_name&.c','&proto&.pb.cc' ],\n"
-			"              'CCFLAGS'       => '-fno-strict-aliasing',\n"
-			"              'OBJECT'        => '$(O_FILES)',\n"
-			"              'INC'           => '-I.',\n"
-			"              'LIBS'          => ['-L/usr/local/lib -lprotobuf'],\n"
-			"              'XSOPT'         => '-C++',\n"
-			"             );\n"
-			"\n"
+	vars["compile"]               =
 			"package MY;\n"
 			"sub c_o {\n"
 			"    my $inherited = shift->SUPER::c_o(@_);\n"
-			"    $inherited =~ s!\\$\\(CCCMD\\) \\$\\(CCCDLFLAGS\\) \"-I\\$\\(PERL_INC\\)\" \\$\\(PASTHRU_DEFINE\\) \\$\\(DEFINE\\) \\$\\*\\.cc!\\$(CCCMD) \\$(CCCDLFLAGS) -o \\$*.o \"-I\\$(PERL_INC)\" \\$(PASTHRU_DEFINE) \\$(DEFINE) \\$*.cc!;\n"
+			"    $inherited =~ s!\\$\\(CCCMD\\) \\$\\(CCCDLFLAGS\\) \"-I\\$\\(PERL_INC\\)\" \
+\\$\\(PASTHRU_DEFINE\\) \\$\\(DEFINE\\) \\$\\*\\.cc!\\$(CCCMD) \\$(CCCDLFLAGS) \
+-o \\$*.o \"-I\\$(PERL_INC)\" \\$(PASTHRU_DEFINE) \\$(DEFINE) \\$*.cc!;\n"
 			"    $inherited;\n"
 			"}\n"
-			"\n"
-		);
+			"\n";
 
+	printer.Print(vars,
+		"use ExtUtils::MakeMaker;\n"
+		"WriteMakefile(\n"
+		"              'NAME'          => '&perlxs_package_name&::&package_module&',\n"
+		"              'VERSION_FROM'  => 'lib/&perlxs_file&/&package_file&.pm',\n"
+		"              'OPTIMIZE'      => '-O2 -Wall',\n"
+		"              'CC'            => 'g++',\n"
+		"              'LD'            => '$(CC)',\n"
+		"              'C'             => [ '&perlxs_package_name&.c','&proto&.pb.cc' ],\n"
+		"              'CCFLAGS'       => '-fno-strict-aliasing',\n"
+		"              'OBJECT'        => '$(O_FILES)',\n"
+		"              'INC'           => '-I.',\n"
+		"              'LIBS'          => ['-L/usr/local/lib -lprotobuf'],\n"
+		"              'XSOPT'         => '-C++',\n"
+		"             );\n"
+		"\n"
+		"&compile&"
+	);
 }
 
 
@@ -168,7 +172,7 @@ void
 PerlXSGenerator::GenerateXS(const FileDescriptor* file,
 													  OutputDirectory* outdir) const
 {
-	string filename = PerlPackageName(perlxs_package_)+".xs";
+	string filename = PerlPackageName(perlxs_package_) + ".xs";
 	scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
 	io::Printer printer(output.get(), '$');
 
@@ -292,17 +296,18 @@ PerlXSGenerator::GenerateXS(const FileDescriptor* file,
 }
 
 // Generate services
-void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
-																						OutputDirectory* outdir) const
+void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file, OutputDirectory* outdir) const
 {
   for (int i = 0; i < file->service_count(); ++i)
 	{
 		const ServiceDescriptor *service = file->service(i);
-    string filename = "lib/" + PerlPackageFile(perlxs_package_) +
-											"/" + PerlPackageFile(file->package()) + "/" +
-											"/Service/" + PerlPackageFile(service->name()) + ".pm";
-    scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
-    io::Printer printer(output.get(), '*');
+
+		string package_file = StringReplace(PerlPackageModule(file->package()), "::", "/", true);
+		string filename = "lib/" + PerlPackageFile(perlxs_package_) +
+												"/" + package_file + "/" +
+												"/Service/" + PerlPackageFile(service->name()) + ".pm";
+		scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
+		io::Printer printer(output.get(), '*');
 
 		map<string, string> vars;
 		vars["perlxs_package"] = perlxs_package_;
@@ -313,7 +318,7 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 		vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
 		vars["service_module"] = PerlPackageModule(service->name());
 		vars["package_module"] = PerlPackageModule(file->package());
-		vars["package_file"]   = PerlPackageFile(file->package());
+		vars["package_file"]   = package_file;
 
 		printer.Print(vars,
 			"package *perlxs_package_module*::*package_module*::Service::*service_module*;\n"
@@ -342,9 +347,9 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 			mvars["unmarshall"] =
 						"    my $unmarshall = sub {\n"
 						"        my $data = shift;\n"
-						"        my $d = new " + PerlPackageModule(perlxs_package_) + "::" +
-												 PerlPackageModule(file->package()) + "::" +
-												 PerlPackageModule(method->output_type()->name())+"();\n"
+						"        my $d = " + PerlPackageModule(perlxs_package_) + "::" +
+											 PerlPackageModule(file->package()) + "::" +
+											 PerlPackageModule(method->output_type()->name()) + "->new();\n"
 						"        if ($d->unpack($data)) { return $d; }\n"
 						"        warn \"failed unpacking protobuf data\";\n"
 						"        return undef;\n"
@@ -451,11 +456,11 @@ void PerlXSGenerator::GenerateServiceModule(const FileDescriptor* file,
 
 
 void
-PerlXSGenerator::GenerateModule(const FileDescriptor* file,
-																OutputDirectory* outdir) const
+PerlXSGenerator::GenerateModule(const FileDescriptor* file, OutputDirectory* outdir) const
 {
-	string filename = "lib/" + PerlPackageFile(perlxs_package_) + "/" +
-										PerlPackageFile(file->package())+ ".pm";
+	string package_file = StringReplace(PerlPackageModule(file->package()), "::", "/", true);
+
+	string filename = "lib/" + PerlPackageFile(perlxs_package_) + "/" + package_file + ".pm";
 	scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
 	io::Printer printer(output.get(), '*');
 
@@ -467,7 +472,7 @@ PerlXSGenerator::GenerateModule(const FileDescriptor* file,
 	vars["perlxs_package_name"]   = PerlPackageName(perlxs_package_);
 	vars["perlxs_package_module"] = PerlPackageModule(perlxs_package_);
 	vars["package_module"] = PerlPackageModule(file->package());
-	vars["package_file"]   = PerlPackageFile(file->package());
+	vars["package_file"]   = package_file;
 
   printer.Print(vars,
 		"package *perlxs_package_module*::*package_module*;\n"
@@ -493,8 +498,7 @@ PerlXSGenerator::GenerateModule(const FileDescriptor* file,
 
 
 void
-PerlXSGenerator::GenerateMessagePOD(const Descriptor* descriptor,
-				    OutputDirectory* outdir) const
+PerlXSGenerator::GenerateMessagePOD(const Descriptor* descriptor, OutputDirectory* outdir) const
 {
   string filename = descriptor->name() + ".pod";
   scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
@@ -580,8 +584,7 @@ PerlXSGenerator::GenerateMessagePOD(const Descriptor* descriptor,
 
 
 void
-PerlXSGenerator::GenerateDescriptorClassNamePOD(const Descriptor* descriptor,
-						io::Printer& printer) const
+PerlXSGenerator::GenerateDescriptorClassNamePOD(const Descriptor* descriptor, io::Printer& printer) const
 {
   for ( int i = 0; i < descriptor->enum_type_count(); i++ ) {
     printer.Print("=item C<*name*>\n"
@@ -606,8 +609,7 @@ PerlXSGenerator::GenerateDescriptorClassNamePOD(const Descriptor* descriptor,
 
 
 void
-PerlXSGenerator::GenerateDescriptorMethodPOD(const Descriptor* descriptor,
-					     io::Printer& printer) const
+PerlXSGenerator::GenerateDescriptorMethodPOD(const Descriptor* descriptor, io::Printer& printer) const
 {
   for ( int i = 0; i < descriptor->enum_type_count(); i++ ) {
     const EnumDescriptor * enum_descriptor = descriptor->enum_type(i);
@@ -816,8 +818,7 @@ PerlXSGenerator::GenerateDescriptorMethodPOD(const Descriptor* descriptor,
 
 
 void
-PerlXSGenerator::GenerateEnumModule(const EnumDescriptor* enum_descriptor,
-				    OutputDirectory* outdir) const
+PerlXSGenerator::GenerateEnumModule(const EnumDescriptor* enum_descriptor, OutputDirectory* outdir) const
 {
   string filename = enum_descriptor->name() + ".pm";
   scoped_ptr<io::ZeroCopyOutputStream> output(outdir->Open(filename));
